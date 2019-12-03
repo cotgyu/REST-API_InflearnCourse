@@ -1,12 +1,16 @@
 package com.example.demoinfleanrestapi.events;
 
+import com.example.demoinfleanrestapi.common.TestDescription;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.bytebuddy.asm.Advice;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.HttpHeaders;
@@ -24,7 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 
 @RunWith(SpringRunner.class)
-@WebMvcTest
+@SpringBootTest
+@AutoConfigureMockMvc
 public class EventControllerTests {
 
     @Autowired
@@ -33,13 +38,12 @@ public class EventControllerTests {
     @Autowired
     ObjectMapper objectMapper;
 
-    @MockBean
-    EventRepository eventRepository;
 
     @Test
+    @TestDescription("정상적으로 이벤트를 생성하는 테스트")
     public void createEvent() throws Exception {
 
-        Event event = Event.builder()
+        EventDto event = EventDto.builder()
                 .name("Spring")
                 .description("REST")
                 .beginEnrollmentDateTime(LocalDateTime.of(2019,11,1,1,1))
@@ -52,8 +56,6 @@ public class EventControllerTests {
                 .location("강남")
                 .build();
 
-        event.setId(10);
-        Mockito.when(eventRepository.save(event)).thenReturn(event);
 
         mockMvc.perform(post("/api/events")
                     .contentType(MediaType.APPLICATION_JSON_UTF8)
@@ -64,9 +66,96 @@ public class EventControllerTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("id").exists())
                 .andExpect(header().exists(HttpHeaders.LOCATION))
-                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaTypes.HAL_JSON_UTF8_VALUE));
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaTypes.HAL_JSON_UTF8_VALUE))
+                .andExpect(jsonPath("id").value(Matchers.not(100)))
+                .andExpect(jsonPath("free").value(false))
+                .andExpect(jsonPath("offline").value(true))
+                .andExpect(jsonPath("eventStatus").value(EventStatus.DRAFT.name()))
+
+
+        ;
 
 
     }
+
+
+    @Test
+    @TestDescription("입력 받을 수 없는 값을 사용한 경우에 에러가 발생하는 테스트")
+    public void createEvent_Bad_Request() throws Exception {
+
+        Event event = Event.builder()
+                .id(100)
+                .name("Spring")
+                .description("REST")
+                .beginEnrollmentDateTime(LocalDateTime.of(2019,11,1,1,1))
+                .closeEnrollmentDateTime(LocalDateTime.of(2019,11,1,1,2))
+                .beginEventDateTime(LocalDateTime.of(2019,11,1,1,1))
+                .endEventDateTime(LocalDateTime.of(2019,11,1,1,2))
+                .basePrice(100)
+                .maxPrice(200)
+                .limitOfEnrollment(100)
+                .location("강남")
+                .free(true)
+                .offline(false)
+                .eventStatus(EventStatus.PUBLISHED)
+                .build();
+
+
+        mockMvc.perform(post("/api/events")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .accept(MediaTypes.HAL_JSON)
+                .content(objectMapper.writeValueAsString((event)))
+        )
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+
+        ;
+
+
+    }
+
+    @Test
+    @TestDescription("입력 값이 비어있는 경우 에러가 발생하는 테스트")
+    public void createEvent_Bad_Request_Empty_Input() throws Exception{
+        EventDto eventDto =     EventDto.builder().build();
+
+        this.mockMvc.perform(post("/api/events")
+                        .contentType(MediaType.APPLICATION_JSON_UTF8)
+                        .content(this.objectMapper.writeValueAsString(eventDto)))
+                .andExpect(status().isBadRequest());
+    }
+
+
+    @Test
+    @TestDescription("입력 값이 잘못된 경우 에러가 발생하는 테스트")
+    public void createEvent_Bad_Request_Wrong_Input() throws Exception{
+
+        // 애노테이션 만으로 검증할 수 없는 경우
+        EventDto eventDto = EventDto.builder()
+                .name("Spring")
+                .description("REST")
+                .beginEnrollmentDateTime(LocalDateTime.of(2019,11,26,1,1))
+                .closeEnrollmentDateTime(LocalDateTime.of(2019,11,25,1,2))
+                .beginEventDateTime(LocalDateTime.of(2019,11,24,1,1))
+                .endEventDateTime(LocalDateTime.of(2019,11,23,1,2))
+                .basePrice(10000)
+                .maxPrice(200)
+                .limitOfEnrollment(100)
+                .location("강남")
+                .build();
+
+        this.mockMvc.perform(post("/api/events")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .content(this.objectMapper.writeValueAsString(eventDto)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].objectName").exists())
+                //.andExpect(jsonPath("$[0].field").exists())
+                .andExpect(jsonPath("$[0].defaultMessage").exists())
+                .andExpect(jsonPath("$[0].code").exists())
+                //.andExpect(jsonPath("$[0].rejectValue").exists())
+                ;
+    }
+
 
 }

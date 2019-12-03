@@ -12,6 +12,7 @@ public class Event {
 
     @Id @GeneratedValue
     private Integer id;
+
     private String name;
     private String description;
     private LocalDateTime beginEnrollmentDateTime;
@@ -28,6 +29,23 @@ public class Event {
 
 
     @Enumerated(EnumType.STRING) // 기본값은 ORDINAL 순서로 숫자값이 저장됨
-    private EventStatus eventStatus;
+    private EventStatus eventStatus= EventStatus.DRAFT;
 
+    public void update() {
+
+        // Update free
+        if(this.basePrice == 0 && this.maxPrice ==0){
+            this.free = true;
+        }else{
+            this.free = false;
+        }
+
+
+        // Update offline
+        if(this.location == null || this.location.trim().isEmpty()){
+            this.offline = false;
+        }else{
+            this.offline = true;
+        }
+    }
 }
