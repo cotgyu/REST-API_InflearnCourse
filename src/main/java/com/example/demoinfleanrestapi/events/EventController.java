@@ -1,7 +1,10 @@
 package com.example.demoinfleanrestapi.events;
 
+import com.example.demoinfleanrestapi.common.ErrorsResource;
 import org.modelmapper.ModelMapper;
+import org.springframework.hateoas.Link;
 import org.springframework.hateoas.MediaTypes;
+import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -44,14 +47,14 @@ public class EventController {
 
         // @Valid를 통해 검증한 에러들을 errors에 담고 검증하여 badRequest
         if(errors.hasErrors()){
-            return ResponseEntity.badRequest().body(errors);
+            return badRequest(errors);
         }
 
 
         // validate를 통해 검증한 에러들을 errors에 담고 검증하여 badRequest
         eventValidator.validate(eventDto, errors);
         if(errors.hasErrors()){
-            return ResponseEntity.badRequest().body(errors);
+            return badRequest(errors);
         }
 
 
@@ -68,8 +71,21 @@ public class EventController {
         event.update();
 
         Event newEvent = this.eventRepository.save(event);
-        URI createUri =linkTo(EventController.class).slash(newEvent.getId()).toUri();
-        return ResponseEntity.created(createUri).body(event);
+        ControllerLinkBuilder selfLinkBuilder = linkTo(EventController.class).slash(newEvent.getId());
+        URI createUri = selfLinkBuilder.toUri();
+        EventResoruce eventResoruce  = new EventResoruce(event);
+        eventResoruce.add(linkTo(EventController.class).withRel("query-events"));
+        //EventResource로 옮김
+        //eventResoruce.add(selfLinkBuilder.withSelfRel());
+        eventResoruce.add(selfLinkBuilder.withRel("update-event"));
+        eventResoruce.add(new Link("/docs/index.html#resources-events-create").withRel("profile"));
+
+        return ResponseEntity.created(createUri).body(eventResoruce);
+    }
+
+    // 리펙토링 해서 생성된 메소드 (option command M)
+    private ResponseEntity badRequest(Errors errors) {
+        return ResponseEntity.badRequest().body(new ErrorsResource(errors));
     }
 
 }
