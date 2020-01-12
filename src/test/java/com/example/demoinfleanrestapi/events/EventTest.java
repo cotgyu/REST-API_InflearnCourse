@@ -1,7 +1,6 @@
 package com.example.demoinfleanrestapi.events;
 
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 import org.junit.Test;
