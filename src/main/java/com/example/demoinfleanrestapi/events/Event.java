@@ -1,5 +1,8 @@
 package com.example.demoinfleanrestapi.events;
 
+import com.example.demoinfleanrestapi.accounts.Account;
+import com.example.demoinfleanrestapi.accounts.AccountSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.*;
 
 import javax.persistence.*;
@@ -27,9 +30,13 @@ public class Event {
     private boolean offline;
     private boolean free;
 
-
+    @Builder.Default
     @Enumerated(EnumType.STRING) // 기본값은 ORDINAL 순서로 숫자값이 저장됨
     private EventStatus eventStatus= EventStatus.DRAFT;
+
+    @ManyToOne
+    @JsonSerialize(using = AccountSerializer.class)
+    private Account manager;
 
     public void update() {
 
